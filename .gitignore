@@ -1,5 +1,6 @@
 # x-cli specific
 auth.json
+cookies.json
 *.cookies
 .x-cli-credentials
 
