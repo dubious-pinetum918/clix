@@ -16,6 +16,20 @@ dependencies = [
     "browser-cookie3>=0.19.0",
     "cryptography>=42.0.0",
 ]
+keywords = ["twitter", "x", "cli", "terminal"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Communications :: Chat",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/spideystreet/clix"
+Repository = "https://github.com/spideystreet/clix"
+Issues = "https://github.com/spideystreet/clix/issues"
 
 [project.scripts]
 clix = "clix.cli.app:app"
