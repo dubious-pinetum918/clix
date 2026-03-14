@@ -19,6 +19,8 @@ class TestMcpToolRegistration:
             "get_tweet",
             "get_user",
             "list_bookmarks",
+            "get_lists",
+            "get_list_timeline",
             "post_tweet",
             "delete_tweet",
             "like",
@@ -39,7 +41,15 @@ class TestMcpToolRegistration:
 
     def test_read_tools_present(self):
         """Read tools should be registered."""
-        read_tools = {"get_feed", "search", "get_tweet", "get_user", "list_bookmarks"}
+        read_tools = {
+            "get_feed",
+            "search",
+            "get_tweet",
+            "get_user",
+            "list_bookmarks",
+            "get_lists",
+            "get_list_timeline",
+        }
         assert read_tools.issubset(_tool_names())
 
     def test_write_tools_present(self):
