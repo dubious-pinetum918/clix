@@ -701,11 +701,76 @@
       user-select: none;
     }
 
-    /* ── Warning ── */
-    .warning {
+    /* ── Chat thread ── */
+    .chat-thread {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      flex-direction: column;
+      margin-top: 24px;
+    }
+
+    .chat-user {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-left: 2px solid var(--text-faint);
+      border-radius: 10px 10px 10px 3px;
+      padding: 16px 20px;
+      position: relative;
+      z-index: 2;
+      width: 100%;
+    }
+
+    .chat-connector {
+      width: 1px;
+      height: 14px;
+      background: var(--border-hover);
+      margin-left: 32px;
+    }
+
+    .chat-agent {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px 10px 3px 10px;
+      padding: 16px 20px;
+      margin-left: 40px;
+      position: relative;
+      z-index: 2;
+      width: calc(100% - 40px);
+    }
+
+    .agent-prompt-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-faint);
+      margin-bottom: 5px;
+    }
+
+    .agent-prompt-text {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-style: italic;
+      color: var(--text-heading);
+      line-height: 1.5;
+    }
+
+    .agent-reply-text {
+      font-size: 0.8rem;
+      color: var(--text-body);
+      line-height: 1.5;
+    }
+
+    .reply-highlight {
+      color: var(--text-heading);
+      font-weight: 600;
+    }
+
+    /* ── Warning ── */
+    .warning {
+      background: rgba(251, 191, 36, 0.04);
+      border: 1px solid rgba(251, 191, 36, 0.12);
+      border-left: 2px solid #fbbf24;
       border-radius: 0 8px 8px 0;
       padding: 16px 20px;
       display: flex;
@@ -718,7 +783,7 @@
       flex-shrink: 0;
       font-size: 0.85rem;
       line-height: 1.6;
-      filter: grayscale(100%);
+      color: #fbbf24;
     }
 
     .warning p {
@@ -728,7 +793,7 @@
     }
 
     .warning strong {
-      color: var(--text-heading);
+      color: #fbbf24;
     }
 
     /* ── Footer ── */
@@ -882,7 +947,7 @@
       </h1>
 
       <p class="tagline animate delay-4">
-        API free-tier is dead, so I built my own.
+        API free-tier is dead, so I built my own. 0 key. Ready for agents.
       </p>
 
       <div class="code-block animate delay-5">
@@ -905,7 +970,19 @@
         </div>
       </div>
 
-      <div class="features animate delay-6">
+      <div class="chat-thread animate delay-6">
+        <div class="chat-user">
+          <div class="agent-prompt-label">You</div>
+          <div class="agent-prompt-text">"Search my timeline for AI news and like the most interesting tweet"</div>
+        </div>
+        <div class="chat-connector"></div>
+        <div class="chat-agent">
+          <div class="agent-prompt-label">Agent</div>
+          <div class="agent-reply-text">Found 12 tweets about AI. Liked <span class="reply-highlight">@karpathy</span>'s thread on reasoning models — 4.2k engagements.</div>
+        </div>
+      </div>
+
+      <div class="features animate delay-7">
         <div class="feature">
           <div class="feature-label">01 — Auth</div>
           <h3>Cookie Auth</h3>
@@ -1084,12 +1161,13 @@
 
     <!-- ── Warning ── -->
     <div class="warning reveal">
-      <div class="warning-icon">!</div>
+      <div class="warning-icon">⚠</div>
       <p>
         <strong>Heads up.</strong> clix uses X's private GraphQL API. It's reverse-engineered and
         unofficial — endpoints can change without notice. Use responsibly and at your own risk.
       </p>
     </div>
+
   </div>
 
   <!-- ── Footer ── -->
