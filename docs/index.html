@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>clix — Twitter/X CLI &amp; MCP Server</title>
+  <meta name="description" content="A CLI and MCP server for Twitter/X. Cookie auth. Zero API keys. Rich terminal output, JSON piping, and AI-native MCP tools." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #050505;
+      --surface: #0a0a0a;
+      --surface-2: #111111;
+      --surface-3: #1a1a1a;
+      --surface-4: #222222;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-hover: rgba(255, 255, 255, 0.14);
+      --border-subtle: rgba(255, 255, 255, 0.03);
+      --white: #ffffff;
+      --text-heading: #e8e8e8;
+      --text-body: #999999;
+      --text-muted: #666666;
+      --text-faint: #333333;
+      --text-ghost: #1a1a1a;
+      --font-display: 'Playfair Display', serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-restoration: manual;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-mono);
+      background: var(--bg);
+      color: var(--text-body);
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Grain overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    ::selection {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--white);
+    }
+
+    /* ── Animations ── */
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+
+    @keyframes scan {
+      0%   { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+
+    @keyframes pulse-dim {
+      0%, 100% { opacity: 0.3; }
+      50%      { opacity: 0.6; }
+    }
+
+    .animate {
+      opacity: 0;
+      animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    .delay-5 { animation-delay: 0.5s; }
+    .delay-6 { animation-delay: 0.6s; }
+    .delay-7 { animation-delay: 0.7s; }
+    .delay-8 { animation-delay: 0.8s; }
+
+    /* ── Navbar ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(5, 5, 5, 0.85);
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-heading);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-x {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-x svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--white);
+    }
+
+    .nav-sep {
+      color: var(--text-faint);
+      font-weight: 300;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 6px;
+      list-style: none;
+      align-items: center;
+    }
+
+    .nav-links a {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-heading);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .gh-link {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gh-link svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .gh-stars {
+      font-size: 0.65rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 9999px;
+      color: var(--text-body);
+    }
+
+    /* ── Container ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 100px 0 72px;
+      position: relative;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .hero-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--surface-3);
+      object-fit: cover;
+      filter: grayscale(100%);
+      transition: filter 0.4s;
+    }
+
+    .hero-avatar:hover {
+      filter: grayscale(0%);
+    }
+
+    .hero-author {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hero-author-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+
+    .hero-author-handle {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hero-author-handle svg {
+      width: 11px;
+      height: 11px;
+      fill: currentColor;
+      vertical-align: middle;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 12px;
+      border-radius: 4px;
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      margin-bottom: 28px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #34d399;
+      animation: pulse-dim 2.5s ease-in-out infinite;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: clamp(2.8rem, 7vw, 4.2rem);
+      color: var(--white);
+      line-height: 1.05;
+      letter-spacing: -0.035em;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      font-weight: 500;
+      background: linear-gradient(135deg, #ffffff 0%, #666666 50%, #333333 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .h1-x {
+      display: inline-block;
+      width: 1.05em;
+      height: 1.05em;
+      fill: var(--white);
+      vertical-align: baseline;
+      position: relative;
+      top: 0.08em;
+      margin-right: 0.08em;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 3px;
+      height: 0.85em;
+      background: var(--text-body);
+      margin-left: 4px;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    .hero .tagline {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      line-height: 1.7;
+      margin-bottom: 48px;
+      font-weight: 400;
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .code-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .code-dots span {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .code-dots span:nth-child(1) { background: #ff5f57; }
+    .code-dots span:nth-child(2) { background: #febc2e; }
+    .code-dots span:nth-child(3) { background: #28c840; }
+
+    .code-label {
+      font-size: 0.65rem;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--text-body);
+      color: var(--text-heading);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--text-body);
+      color: var(--white);
+    }
+
+    .code-body {
+      padding: 20px;
+    }
+
+    .code-body pre {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.9;
+      color: var(--text-body);
+      overflow-x: auto;
+    }
+
+    .code-body .prompt {
+      color: var(--text-heading);
+      user-select: none;
+    }
+
+    .code-body .comment {
+      color: var(--text-faint);
+    }
+
+    .code-body .flag {
+      color: var(--white);
+    }
+
+    .code-body .string {
+      color: var(--text-muted);
+    }
+
+    /* ── Section ── */
+    section {
+      padding: 80px 0;
+    }
+
+    section + section {
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.75rem;
+      color: var(--text-heading);
+      letter-spacing: -0.025em;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      max-width: 500px;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    /* ── Features ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 640px) {
+      .features {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature {
+      background: var(--surface);
+      padding: 28px 24px;
+      transition: background 0.3s;
+    }
+
+    .feature:hover {
+      background: var(--surface-2);
+    }
+
+    .feature-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+
+    .feature h3 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-heading);
+      margin-bottom: 8px;
+    }
+
+    .feature p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Steps ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      transition: background 0.25s;
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+
+    .step:hover {
+      background: var(--surface-2);
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-faint);
+      width: 28px;
+      padding-top: 2px;
+    }
+
+    .step-content h3 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-heading);
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .step-content code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 3px;
+      color: var(--text-body);
+    }
+
+    /* ── Commands Grid ── */
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 640px) {
+      .cmd-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .cmd-card {
+      background: var(--surface);
+      padding: 20px;
+      transition: background 0.25s;
+    }
+
+    .cmd-card:hover {
+      background: var(--surface-2);
+    }
+
+    .cmd-card h4 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-heading);
+      margin-bottom: 4px;
+    }
+
+    .cmd-card p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ── MCP Banner ── */
+    .mcp-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mcp-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+
+    .mcp-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .mcp-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-faint);
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .mcp-tools-count {
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .mcp-banner h3 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: var(--text-heading);
+      margin-bottom: 10px;
+    }
+
+    .mcp-banner p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      max-width: 540px;
+    }
+
+    .mcp-cmd {
+      font-size: 0.8rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: var(--text-body);
+      display: inline-block;
+    }
+
+    .mcp-cmd .prompt {
+      color: var(--text-heading);
+      user-select: none;
+    }
+
+    /* ── Warning ── */
+    .warning {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--text-faint);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-top: 48px;
+    }
+
+    .warning-icon {
+      flex-shrink: 0;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      filter: grayscale(100%);
+    }
+
+    .warning p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .warning strong {
+      color: var(--text-heading);
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.7rem;
+      color: var(--text-faint);
+    }
+
+    .footer-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      filter: grayscale(100%);
+      opacity: 0.6;
+    }
+
+    .footer-left a {
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .footer-left a:hover {
+      color: var(--text-heading);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+    }
+
+    .footer-links a {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-heading);
+    }
+
+    /* ── Inline code ── */
+    .ic {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: var(--text-body);
+    }
+
+    /* ── Scroll reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Scanline effect (subtle) ── */
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.03) 20%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.03) 80%,
+        transparent
+      );
+      animation: scan 8s linear infinite;
+      pointer-events: none;
+    }
+
+    /* ── Background grid + radial glow ── */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle 500px at 50% 40%, rgba(255,255,255,0.06) 0%, transparent 100%),
+        radial-gradient(circle 300px at 30% 30%, rgba(255,255,255,0.03) 0%, transparent 100%),
+        radial-gradient(circle 250px at 70% 50%, rgba(255,255,255,0.03) 0%, transparent 100%),
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ── -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#" class="nav-brand">
+        clix0
+      </a>
+      <ul class="nav-links">
+        <li><a href="#install">Install</a></li>
+        <li><a href="#commands">Commands</a></li>
+        <li><a href="#mcp">MCP</a></li>
+        <li><a href="https://github.com/spideystreet/clix" target="_blank" rel="noopener" class="gh-link"><svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span class="gh-stars" id="star-count"></span></a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <div class="container">
+    <section class="hero" id="top">
+
+      <a href="https://x.com/spideystreet" target="_blank" rel="noopener" class="hero-top animate delay-1">
+        <img
+          src="https://unavatar.io/x/spideystreet"
+          alt="@spideystreet"
+          class="hero-avatar"
+          loading="lazy"
+        />
+        <span class="hero-author-handle">@spideystreet</span>
+      </a>
+
+      <div class="hero-badge animate delay-2">v0.3.1</div>
+
+      <h1 class="animate delay-3">
+        <svg class="h1-x" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> from your <em>terminal</em><span class="cursor"></span>
+      </h1>
+
+      <p class="tagline animate delay-4">
+        API free-tier is dead, so I built my own.
+      </p>
+
+      <div class="code-block animate delay-5">
+        <div class="code-header">
+          <div class="code-title">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-label">terminal</span>
+          </div>
+          <button class="copy-btn" data-copy="pip install clix0&#10;clix auth login&#10;clix feed" onclick="copyCode(this)">Copy</button>
+        </div>
+        <div class="code-body">
+<pre><span class="comment"># install from PyPI</span>
+<span class="prompt">$</span> pip install clix0
+
+<span class="comment"># authenticate with your browser cookies</span>
+<span class="prompt">$</span> clix auth login
+
+<span class="comment"># enjoy your feed</span>
+<span class="prompt">$</span> clix feed</pre>
+        </div>
+      </div>
+
+      <div class="features animate delay-6">
+        <div class="feature">
+          <div class="feature-label">01 — Auth</div>
+          <h3>Cookie Auth</h3>
+          <p>Uses your existing browser session. No API keys, no developer account.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-label">02 — Output</div>
+          <h3>Three Interfaces</h3>
+          <p>Rich terminal for humans, <span class="ic">--json</span> for scripts, MCP for AI.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-label">03 — Privacy</div>
+          <h3>Local Only</h3>
+          <p>No proxy, no middleman. Direct GraphQL from your machine.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How it works ── -->
+    <section id="install" class="reveal">
+      <div class="section-label">How it works</div>
+      <div class="section-title">Three steps to your feed</div>
+      <p class="section-desc">
+        clix reuses the session your browser already established with X.
+        No tokens to manage, no apps to register.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-content">
+            <h3>Install with pip</h3>
+            <p>
+              Requires Python 3.11+. Install from PyPI with
+              <code>pip install clix0</code> or use <code>uvx clix0</code> for a one-shot run.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-content">
+            <h3>Authenticate</h3>
+            <p>
+              Run <code>clix auth login</code> — extracts cookies from Chrome, Firefox, Edge, or Brave.
+              Or set <code>X_AUTH_TOKEN</code> and <code>X_CT0</code> env vars manually.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-content">
+            <h3>Tweet, search, scroll</h3>
+            <p>
+              Your full X experience in the terminal. Post, reply, DM, manage lists,
+              schedule tweets — all from the command line.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Commands ── -->
+    <section id="commands" class="reveal">
+      <div class="section-label">Commands</div>
+      <div class="section-title">Everything you need</div>
+      <p class="section-desc">
+        40+ commands for reading, writing, and managing your X account.
+        All support <span class="ic">--json</span> and <span class="ic">--compact</span> flags.
+      </p>
+
+      <div class="cmd-grid">
+        <div class="cmd-card">
+          <h4>clix feed</h4>
+          <p>Your timeline — For You or Following</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix search</h4>
+          <p>Search tweets, users, photos, videos</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix post</h4>
+          <p>Post with replies, quotes, images</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix tweet</h4>
+          <p>View any tweet with full thread</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix dm send</h4>
+          <p>Direct messages from terminal</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix schedule</h4>
+          <p>Schedule tweets for later</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix lists</h4>
+          <p>Create and manage your lists</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix trending</h4>
+          <p>See what's trending now</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix bookmarks</h4>
+          <p>Access your saved tweets</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix download</h4>
+          <p>Download media from tweets</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix user</h4>
+          <p>View any user profile</p>
+        </div>
+        <div class="cmd-card">
+          <h4>clix auth</h4>
+          <p>Multi-account switching</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── MCP ── -->
+    <section id="mcp" class="reveal">
+      <div class="section-label">For AI agents</div>
+      <div class="section-title">MCP Server</div>
+      <p class="section-desc">
+        38 tools over stdio transport. Give Claude, Cursor, or any MCP-compatible
+        agent full access to Twitter/X.
+      </p>
+
+      <div class="mcp-banner">
+        <div class="mcp-top">
+          <span class="mcp-label">stdio</span>
+          <span class="mcp-tools-count">38 tools</span>
+        </div>
+        <h3>AI-native from day one</h3>
+        <p>
+          Read feeds, post tweets, manage lists, send DMs — all as structured MCP tools.
+          Returns clean JSON, handles errors gracefully, and works with any MCP client.
+        </p>
+        <code class="mcp-cmd"><span class="prompt">$</span> clix mcp</code>
+      </div>
+    </section>
+
+    <!-- ── Output modes ── -->
+    <section class="reveal">
+      <div class="section-label">Output modes</div>
+      <div class="section-title">Built for every workflow</div>
+      <p class="section-desc">
+        Human-friendly by default. Machine-readable when you need it.
+      </p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-title">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-label">terminal</span>
+          </div>
+        </div>
+        <div class="code-body">
+<pre><span class="comment"># Rich output for humans</span>
+<span class="prompt">$</span> clix feed
+
+<span class="comment"># JSON for scripts and pipes</span>
+<span class="prompt">$</span> clix feed <span class="flag">--json</span> | jq <span class="string">'.tweets[].text'</span>
+
+<span class="comment"># Compact JSON for AI context windows</span>
+<span class="prompt">$</span> clix feed <span class="flag">--compact</span>
+
+<span class="comment"># YAML for readability</span>
+<span class="prompt">$</span> clix feed <span class="flag">--yaml</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Warning ── -->
+    <div class="warning reveal">
+      <div class="warning-icon">!</div>
+      <p>
+        <strong>Heads up.</strong> clix uses X's private GraphQL API. It's reverse-engineered and
+        unofficial — endpoints can change without notice. Use responsibly and at your own risk.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <img src="https://unavatar.io/x/spideystreet" alt="" class="footer-avatar" loading="lazy" />
+          Built by <a href="https://x.com/spideystreet" target="_blank" rel="noopener">@spideystreet</a>
+          <span style="color: var(--text-faint)">·</span>
+          MIT License
+        </div>
+        <div class="footer-links">
+          <a href="https://pypi.org/project/clix0/" target="_blank" rel="noopener">PyPI</a>
+          <a href="https://github.com/spideystreet/clix" target="_blank" rel="noopener">Source</a>
+          <a href="https://github.com/spideystreet/clix/issues" target="_blank" rel="noopener">Issues</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+
+    /* ── Copy button ── */
+    function copyCode(btn) {
+      const text = btn.dataset.copy ||
+        btn.closest('.code-block').querySelector('pre').textContent
+          .replace(/^\$ /gm, '')
+          .replace(/^# .*$/gm, '')
+          .trim();
+
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    /* ── Scroll reveal ── */
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    /* ── GitHub stars ── */
+    fetch('https://api.github.com/repos/spideystreet/clix')
+      .then(r => r.json())
+      .then(data => {
+        const el = document.getElementById('star-count');
+        if (el && typeof data.stargazers_count === 'number') {
+          el.textContent = '\u2B50 ' + data.stargazers_count;
+        }
+      })
+      .catch(() => {});
+  </script>
+
+</body>
+</html>
