@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20NC%201.0-blue?style=flat-square" alt="PolyForm NC 1.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT"></a>
   <a href="https://pypi.org/project/clix0/"><img src="https://img.shields.io/pypi/v/clix0?style=flat-square&label=PyPI&color=green&cacheSeconds=3600" alt="PyPI"></a>
 </p>
 
@@ -24,39 +24,90 @@ Works for humans (rich terminal output) and AI agents (structured JSON). Zero AP
 uv pip install clix0
 
 # authenticate (extracts cookies from your browser)
-clix auth
+clix auth login
 ```
 
 ## Commands
+
+### Content
 
 | Command | Description |
 |---|---|
 | `clix feed [--type for-you\|following] [--count N]` | Timeline |
 | `clix search <query> [--type top\|latest\|photos\|videos]` | Search tweets |
-| `clix tweet <id>` | View tweet + thread |
+| `clix trending` | Trending topics |
+| `clix tweet <id> [--export FILE]` | View tweet + thread (export articles as Markdown) |
+| `clix tweets <id1> <id2> ...` | Batch fetch tweets |
 | `clix user <handle>` | Profile + recent tweets |
-| `clix post <text> [--reply-to ID]` | Post a tweet |
+| `clix users <handle1> <handle2> ...` | Batch fetch users |
+| `clix bookmarks` | List bookmarks |
+
+### Actions
+
+| Command | Description |
+|---|---|
+| `clix post <text> [--reply-to ID] [--image FILE]` | Post a tweet (up to 4 images) |
 | `clix delete <id>` | Delete a tweet |
 | `clix like <id>` / `clix unlike <id>` | Like / unlike |
 | `clix retweet <id>` / `clix unretweet <id>` | Retweet / undo |
 | `clix bookmark <id>` / `clix unbookmark <id>` | Bookmark / remove |
-| `clix bookmarks` | List bookmarks |
-| `clix auth` | Auth status / setup |
-| `clix config` | Manage config |
+| `clix follow <handle>` / `clix unfollow <handle>` | Follow / unfollow |
+| `clix block <handle>` / `clix unblock <handle>` | Block / unblock |
+| `clix mute <handle>` / `clix unmute <handle>` | Mute / unmute |
+| `clix download <tweet-id> [--output-dir DIR]` | Download media |
 
-## Agent Mode
+### Scheduled Tweets
+
+| Command | Description |
+|---|---|
+| `clix schedule <text> --at <time>` | Schedule a tweet |
+| `clix scheduled` | List scheduled tweets |
+| `clix unschedule <id>` | Cancel scheduled tweet |
+
+### Lists
+
+| Command | Description |
+|---|---|
+| `clix lists` | View your lists |
+| `clix lists view <id>` | Tweets from a list |
+| `clix lists create <name> [--private]` | Create a list |
+| `clix lists delete <id>` | Delete a list |
+| `clix lists members <id>` | View members |
+| `clix lists add-member <id> <handle>` | Add member |
+| `clix lists remove-member <id> <handle>` | Remove member |
+
+### Direct Messages
+
+| Command | Description |
+|---|---|
+| `clix dm inbox` | View conversations |
+| `clix dm send <handle> <text>` | Send a DM |
+
+### System
+
+| Command | Description |
+|---|---|
+| `clix auth status\|login\|set\|accounts\|switch\|import` | Authentication |
+| `clix config` | Manage config |
+| `clix doctor` | Run diagnostics |
+
+## Output Modes
 
 Every command supports `--json` for structured output. Pipe detection is automatic — non-TTY gets JSON by default.
 
 ```bash
-# explicit
+# structured JSON
 clix feed --json | jq '.tweets[0].text'
 
-# automatic when piped
-clix search "LLM" | python process.py
-```
+# token-optimized for AI agents
+clix feed --compact
 
-See [`SKILL.md`](SKILL.md) for AI agent integration docs.
+# YAML
+clix feed --yaml
+
+# full text (no truncation)
+clix feed --full-text
+```
 
 ## MCP Server
 
@@ -90,7 +141,17 @@ Or with explicit auth:
 }
 ```
 
-**14 tools:** `get_feed`, `search`, `get_tweet`, `get_user`, `list_bookmarks`, `post_tweet`, `delete_tweet`, `like`, `unlike`, `retweet`, `unretweet`, `bookmark`, `unbookmark`, `auth_status`
+**38 tools** covering all commands: feed, search, trending, tweets, users, bookmarks, lists, DMs, post, delete, like, unlike, retweet, unretweet, bookmark, unbookmark, follow, unfollow, block, unblock, mute, unmute, schedule, download, and more.
+
+## Proxy Support
+
+```bash
+# via environment variable
+CLIX_PROXY=socks5://127.0.0.1:1080 clix feed
+
+# via config
+clix config set network.proxy socks5://127.0.0.1:1080
+```
 
 ## Contributing
 
@@ -102,4 +163,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE)
+[MIT](LICENSE)
