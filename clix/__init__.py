@@ -1,3 +1,3 @@
 """clix: A command-line interface for Twitter/X."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"

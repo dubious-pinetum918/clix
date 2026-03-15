@@ -49,6 +49,12 @@ from clix.core.api import (
     get_dm_inbox as _get_dm_inbox,
 )
 from clix.core.api import (
+    get_followers as _get_followers,
+)
+from clix.core.api import (
+    get_following as _get_following,
+)
+from clix.core.api import (
     get_home_timeline,
     get_list_tweets,
     get_tweet_detail,
@@ -67,6 +73,12 @@ from clix.core.api import (
 )
 from clix.core.api import (
     get_tweets_by_ids as _get_tweets_by_ids,
+)
+from clix.core.api import (
+    get_user_likes as _get_user_likes,
+)
+from clix.core.api import (
+    get_user_tweets as _get_user_tweets,
 )
 from clix.core.api import (
     like_tweet as _like_tweet,
@@ -111,7 +123,7 @@ from clix.core.api import (
     upload_media as _upload_media,
 )
 from clix.core.auth import AuthError, get_credentials
-from clix.core.client import XClient
+from clix.core.client import RateLimitError, StaleEndpointError, XClient
 
 mcp = FastMCP(
     "clix", instructions="Twitter/X CLI tool — read and write tweets, search, manage bookmarks."
@@ -119,13 +131,25 @@ mcp = FastMCP(
 
 
 def _error_response(error: Exception) -> str:
-    """Format an error as a JSON string."""
-    return json.dumps(
-        {
-            "error": str(error),
-            "type": type(error).__name__,
-        }
-    )
+    """Format an error as a structured JSON string with retry guidance."""
+    response: dict[str, object] = {
+        "error": str(error),
+        "type": type(error).__name__,
+    }
+    if hasattr(error, "status_code") and error.status_code:
+        response["status_code"] = error.status_code
+    if hasattr(error, "response_data") and error.response_data:
+        response["response_data"] = error.response_data
+    # Retry guidance for agentic consumers
+    if isinstance(error, RateLimitError):
+        response["retry"] = True
+        response["retry_after_seconds"] = 60
+    elif isinstance(error, StaleEndpointError):
+        response["retry"] = True
+        response["retry_after_seconds"] = 5
+    elif isinstance(error, AuthError):
+        response["retry"] = False
+    return json.dumps(response, default=str)
 
 
 def _serialize(obj: object) -> str:
@@ -141,33 +165,37 @@ def _serialize(obj: object) -> str:
 
 
 @mcp.tool()
-def get_feed(type: str = "for-you", count: int = 20) -> str:
+def get_feed(type: str = "for-you", count: int = 20, cursor: str | None = None) -> str:
     """Fetch the home timeline.
 
     Args:
         type: Timeline type — "for-you" or "following".
         count: Number of tweets to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
     """
     try:
         with XClient() as client:
-            response = get_home_timeline(client, timeline_type=type, count=count)
+            response = get_home_timeline(client, timeline_type=type, count=count, cursor=cursor)
             return _serialize(response)
     except Exception as e:
         return _error_response(e)
 
 
 @mcp.tool()
-def search(query: str, type: str = "Top", count: int = 20) -> str:
+def search(query: str, type: str = "Top", count: int = 20, cursor: str | None = None) -> str:
     """Search for tweets.
 
     Args:
         query: Search query string.
         type: Search type — "Top", "Latest", "Photos", or "Videos".
         count: Number of results to return (max 100).
+        cursor: Pagination cursor from a previous response.
     """
     try:
         with XClient() as client:
-            response = search_tweets(client, query=query, search_type=type, count=count)
+            response = search_tweets(
+                client, query=query, search_type=type, count=count, cursor=cursor
+            )
             return _serialize(response)
     except Exception as e:
         return _error_response(e)
@@ -241,15 +269,16 @@ def get_user(handle: str) -> str:
 
 
 @mcp.tool()
-def list_bookmarks(count: int = 20) -> str:
+def list_bookmarks(count: int = 20, cursor: str | None = None) -> str:
     """Fetch bookmarked tweets.
 
     Args:
         count: Number of bookmarks to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
     """
     try:
         with XClient() as client:
-            response = _get_bookmarks(client, count=count)
+            response = _get_bookmarks(client, count=count, cursor=cursor)
             return _serialize(response)
     except Exception as e:
         return _error_response(e)
@@ -270,16 +299,17 @@ def get_lists() -> str:
 
 
 @mcp.tool()
-def get_list_timeline(list_id: str, count: int = 20) -> str:
+def get_list_timeline(list_id: str, count: int = 20, cursor: str | None = None) -> str:
     """Fetch tweets from a list.
 
     Args:
         list_id: The list ID.
         count: Number of tweets to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
     """
     try:
         with XClient() as client:
-            response = get_list_tweets(client, list_id=list_id, count=count)
+            response = get_list_tweets(client, list_id=list_id, count=count, cursor=cursor)
             return _serialize(response)
     except Exception as e:
         return _error_response(e)
@@ -330,6 +360,98 @@ def get_users_batch(handles: list[str]) -> str:
                 if user:
                     users.append(user)
         return json.dumps([u.model_dump(mode="json") for u in users], default=str)
+    except Exception as e:
+        return _error_response(e)
+
+
+@mcp.tool()
+def get_user_tweets(handle: str, count: int = 20, cursor: str | None = None) -> str:
+    """Get tweets posted by a user. Returns tweets and pagination cursor.
+
+    Args:
+        handle: The user's screen name (without @).
+        count: Number of tweets to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
+    """
+    try:
+        with XClient() as client:
+            user = get_user_by_handle(client, handle=handle.lstrip("@"))
+            if user is None:
+                return json.dumps({"error": "User not found", "type": "NotFoundError"})
+            response = _get_user_tweets(client, user_id=user.id, count=count, cursor=cursor)
+            return _serialize(response)
+    except Exception as e:
+        return _error_response(e)
+
+
+@mcp.tool()
+def get_user_likes(handle: str, count: int = 20, cursor: str | None = None) -> str:
+    """Get tweets liked by a user. Returns tweets and pagination cursor.
+
+    Args:
+        handle: The user's screen name (without @).
+        count: Number of tweets to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
+    """
+    try:
+        with XClient() as client:
+            user = get_user_by_handle(client, handle=handle.lstrip("@"))
+            if user is None:
+                return json.dumps({"error": "User not found", "type": "NotFoundError"})
+            response = _get_user_likes(client, user_id=user.id, count=count, cursor=cursor)
+            return _serialize(response)
+    except Exception as e:
+        return _error_response(e)
+
+
+@mcp.tool()
+def get_followers(handle: str, count: int = 20, cursor: str | None = None) -> str:
+    """Get followers of a user. Returns users and pagination cursor.
+
+    Args:
+        handle: The user's screen name (without @).
+        count: Number of followers to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
+    """
+    try:
+        with XClient() as client:
+            user = get_user_by_handle(client, handle=handle.lstrip("@"))
+            if user is None:
+                return json.dumps({"error": "User not found", "type": "NotFoundError"})
+            users, next_cursor = _get_followers(client, user_id=user.id, count=count, cursor=cursor)
+            return json.dumps(
+                {
+                    "users": [u.model_dump(mode="json") for u in users],
+                    "next_cursor": next_cursor,
+                },
+                default=str,
+            )
+    except Exception as e:
+        return _error_response(e)
+
+
+@mcp.tool()
+def get_following(handle: str, count: int = 20, cursor: str | None = None) -> str:
+    """Get users followed by a user. Returns users and pagination cursor.
+
+    Args:
+        handle: The user's screen name (without @).
+        count: Number of users to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
+    """
+    try:
+        with XClient() as client:
+            user = get_user_by_handle(client, handle=handle.lstrip("@"))
+            if user is None:
+                return json.dumps({"error": "User not found", "type": "NotFoundError"})
+            users, next_cursor = _get_following(client, user_id=user.id, count=count, cursor=cursor)
+            return json.dumps(
+                {
+                    "users": [u.model_dump(mode="json") for u in users],
+                    "next_cursor": next_cursor,
+                },
+                default=str,
+            )
     except Exception as e:
         return _error_response(e)
 
@@ -644,16 +766,19 @@ def remove_list_member(list_id: str, user_id: str) -> str:
 
 
 @mcp.tool()
-def get_list_members(list_id: str, count: int = 20) -> str:
+def get_list_members(list_id: str, count: int = 20, cursor: str | None = None) -> str:
     """Fetch members of a list.
 
     Args:
         list_id: The list ID.
         count: Number of members to fetch (max 100).
+        cursor: Pagination cursor from a previous response.
     """
     try:
         with XClient() as client:
-            users, next_cursor = _get_list_members(client, list_id=list_id, count=count)
+            users, next_cursor = _get_list_members(
+                client, list_id=list_id, count=count, cursor=cursor
+            )
             return json.dumps(
                 {
                     "users": [u.model_dump(mode="json") for u in users],

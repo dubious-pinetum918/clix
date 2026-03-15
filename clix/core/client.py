@@ -296,12 +296,14 @@ class XClient:
                 elif response.status_code == 401:
                     raise AuthError("Authentication failed. Cookies may be expired.")
                 elif response.status_code == 429:
+                    retry_after = response.headers.get("retry-after", "60")
                     if attempt < max_retries - 1:
                         backoff_delay(attempt)
                         continue
                     raise RateLimitError(
                         "Rate limited by Twitter/X",
                         status_code=429,
+                        response_data={"retry_after": int(retry_after)},
                     )
                 elif response.status_code == 403:
                     raise APIError(

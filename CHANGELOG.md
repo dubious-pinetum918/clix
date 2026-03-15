@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-03-15
+
+### Added
+- MCP tools: `get_user_tweets`, `get_user_likes`, `get_followers`, `get_following` (42 tools total)
+- Pagination cursor parameter on all read MCP tools (`get_feed`, `search`, `list_bookmarks`, `get_list_timeline`, `get_list_members`)
+
+### Fixed
+- Structured error responses with `status_code`, `retry`, `retry_after_seconds` fields
+- Rate limit errors now include `retry_after` from API headers
+- Auth, rate limit, and stale endpoint errors have distinct retry guidance
+
 ## [0.3.0] - 2026-03-15
 
 ### Added
