@@ -171,7 +171,7 @@
     .nav-links a {
       font-size: 0.75rem;
       font-weight: 500;
-      color: var(--text-muted);
+      color: var(--text-heading);
       transition: color 0.2s;
       padding: 6px 10px;
       border-radius: 6px;
@@ -222,6 +222,7 @@
       align-items: center;
       gap: 16px;
       margin-bottom: 40px;
+      width: fit-content;
     }
 
     .hero-avatar {
@@ -301,7 +302,8 @@
 
     .hero h1 em {
       font-style: italic;
-      font-weight: 500;
+      font-weight: 400;
+      padding-right: 0.05em;
       background: linear-gradient(135deg, #ffffff 0%, #666666 50%, #333333 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -412,7 +414,7 @@
 
     .code-body pre {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       line-height: 1.9;
       color: var(--text-body);
       overflow-x: auto;
@@ -445,7 +447,7 @@
     }
 
     .section-label {
-      font-size: 0.65rem;
+      font-size: 0.7rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.14em;
@@ -455,8 +457,8 @@
 
     .section-title {
       font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 1.75rem;
+      font-weight: 400;
+      font-size: 1.85rem;
       color: var(--text-heading);
       letter-spacing: -0.025em;
       margin-bottom: 12px;
@@ -464,7 +466,7 @@
 
     .section-desc {
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       max-width: 500px;
       margin-bottom: 40px;
       line-height: 1.6;
@@ -499,7 +501,7 @@
     }
 
     .feature-label {
-      font-size: 0.6rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -509,14 +511,14 @@
 
     .feature h3 {
       font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 1rem;
+      font-weight: 400;
+      font-size: 1.1rem;
       color: var(--text-heading);
       margin-bottom: 8px;
     }
 
     .feature p {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
       line-height: 1.5;
     }
@@ -560,14 +562,14 @@
 
     .step-content h3 {
       font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 1rem;
+      font-weight: 400;
+      font-size: 1.1rem;
       color: var(--text-heading);
       margin-bottom: 4px;
     }
 
     .step-content p {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       line-height: 1.5;
     }
@@ -610,14 +612,14 @@
     }
 
     .cmd-card h4 {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--text-heading);
       margin-bottom: 4px;
     }
 
     .cmd-card p {
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
       line-height: 1.4;
     }
@@ -672,14 +674,14 @@
 
     .mcp-banner h3 {
       font-family: var(--font-display);
-      font-weight: 800;
-      font-size: 1.3rem;
+      font-weight: 400;
+      font-size: 1.4rem;
       color: var(--text-heading);
       margin-bottom: 10px;
     }
 
     .mcp-banner p {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       line-height: 1.6;
       margin-bottom: 16px;
@@ -717,7 +719,8 @@
       padding: 16px 20px;
       position: relative;
       z-index: 2;
-      width: 100%;
+      width: fit-content;
+      max-width: 85%;
     }
 
     .chat-connector {
@@ -739,7 +742,7 @@
     }
 
     .agent-prompt-label {
-      font-size: 0.55rem;
+      font-size: 0.65rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -749,14 +752,14 @@
 
     .agent-prompt-text {
       font-family: var(--font-display);
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-style: italic;
       color: var(--text-heading);
       line-height: 1.5;
     }
 
     .agent-reply-text {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--text-body);
       line-height: 1.5;
     }
@@ -787,7 +790,7 @@
     }
 
     .warning p {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
       line-height: 1.5;
     }
@@ -943,7 +946,7 @@
       <div class="hero-badge animate delay-2">v0.3.1</div>
 
       <h1 class="animate delay-3">
-        <svg class="h1-x" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> from your <em>terminal</em><span class="cursor"></span>
+        <svg class="h1-x" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> from <em>terminal</em><span class="cursor"></span>
       </h1>
 
       <p class="tagline animate delay-4">
