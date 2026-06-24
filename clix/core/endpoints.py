@@ -7,8 +7,10 @@ import logging
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 from curl_cffi import requests as curl_requests
 
@@ -39,6 +41,25 @@ FALLBACK_OPERATIONS: dict[str, str] = {
     "DeleteRetweet": "iQtK4dl5hBmXewYZuEOKVw",
     "CreateBookmark": "aoDbu3RHznuiSkQ9aNM67Q",
     "DeleteBookmark": "Wlmlj2-xzyS1GN3a6cj-mQ",
+    "Viewer": "_8ClT24oZ8tpylf_OSuNdg",
+    "CreateTweet": "H-t2v_HvFR07ZBP9aOeKoA",
+    "DeleteTweet": "nxpZCY2K-I6QoFHAHeojFQ",
+    "FavoriteTweet": "lI07N6Otwv1PhnEgXILM7A",
+    "UnfavoriteTweet": "ZYKSe-w7KEslx3JhSIk5LA",
+    "TweetResultByRestId": "SgZWKwvBiOKrSC0QeOGvXw",
+    "UserTweetsAndReplies": "xdqXQQg4vOBF9Np6VtUsdw",
+    "Likes": "QWLtYLOcZidu0RyjeTfd-Q",
+    "Followers": "G1uS7V_A_IqHhF9Il0K-nA",
+    "Following": "U96721pgL7wU5QUwu2goUA",
+    "ListsManagementPageTimeline": "gEL_EBnZxsgVLMNw_nNk6w",
+    "ListLatestTweetsTimeline": "R36US0qG-bOk3ryAYswZmA",
+}
+
+XWEB_OPERATION_ALIASES: dict[str, str] = {
+    "SearchByRawQuery": "SearchTimeline",
+    "bookmarksQuery": "BookmarkSearchTimeline",
+    "homeQuery": "HomeTimeline",
+    "homeFollowingQuery": "HomeLatestTimeline",
 }
 
 # --- Bundle URL patterns ---
@@ -49,17 +70,35 @@ _BUNDLE_HREF_PATTERN = re.compile(
 _BUNDLE_SRC_PATTERN = re.compile(
     r'src="(https://abs\.twimg\.com/responsive-web/client-web/[^"]+\.js)"'
 )
+_XWEB_BUNDLE_PATTERN = re.compile(
+    r'(?:href|src)="(https://abs\.twimg\.com/x-web/x-web/[^"]+\.js)"'
+)
 
 # Chunk mapping pattern: e+"."+{"api":"abc123","chunk":"def456"}[e]+"a.js"
 _CHUNK_MAP_PATTERN = re.compile(r'"\+(\{[^}]+\})\[e\]\+"a\.js"')
 _BUNDLE_CDN_BASE = "https://abs.twimg.com/responsive-web/client-web"
+_XWEB_CDN_BASE = "https://abs.twimg.com/x-web/x-web/"
+_XWEB_ASSET_PATTERN = re.compile(
+    r"(?:[`\"']|^)(?:\./)?((?:assets/)?[A-Za-z0-9_./-]+\.js)(?=[`\"'])"
+)
 
 # --- Operation extraction pattern ---
 
 _OPERATION_PATTERN = re.compile(
     r'queryId:\s*"([A-Za-z0-9_-]+)"'
     r".*?"
-    r'operationName:\s*"([A-Za-z]+)"',
+    r'operationName:\s*"([A-Za-z0-9_]+)"',
+    re.DOTALL,
+)
+_RELAY_PARAMS_PATTERN = re.compile(
+    r"params:\{"
+    r"id:`([A-Za-z0-9_-]+)`,"
+    r"metadata:\{[^}]*\},"
+    r"name:`([^`]+)`,"
+    r"operationKind:`(query|mutation|subscription)`,"
+    r"text:(?:null|`(?:\\`|[^`])*`)"
+    r"(?:,[^}]*)?"
+    r"\}",
     re.DOTALL,
 )
 
@@ -89,6 +128,7 @@ def extract_bundle_urls(html: str) -> list[str]:
     """
     urls = _BUNDLE_HREF_PATTERN.findall(html)
     urls.extend(_BUNDLE_SRC_PATTERN.findall(html))
+    urls.extend(_XWEB_BUNDLE_PATTERN.findall(html))
 
     # Extract chunk URLs from inline JS: e+"."+{"api":"hash","endpoints":"hash"}[e]+"a.js"
     for match in _CHUNK_MAP_PATTERN.findall(html):
@@ -125,6 +165,30 @@ def extract_bundle_urls(html: str) -> list[str]:
     return result
 
 
+def extract_referenced_bundle_urls(js_content: str, base_url: str = _XWEB_CDN_BASE) -> list[str]:
+    """Extract x-web JS asset URLs referenced from a Vite bundle."""
+    urls: list[str] = []
+    for match in _XWEB_ASSET_PATTERN.finditer(js_content):
+        rel = match.group(1)
+        if rel.startswith(("http://", "https://", "/")):
+            continue
+        if "/" in rel.removeprefix("assets/"):
+            continue
+        if not re.search(r"[-_][A-Za-z0-9_-]{6,}\.js$", rel):
+            continue
+        path = rel if rel.startswith("assets/") else f"assets/{rel}"
+        urls.append(urljoin(base_url, path))
+
+    seen: set[str] = set()
+    result: list[str] = []
+    for url in urls:
+        if url in seen:
+            continue
+        seen.add(url)
+        result.append(url)
+    return result
+
+
 def extract_operations_from_js(
     js_content: str,
 ) -> tuple[dict[str, str], dict[str, list[str]]]:
@@ -141,6 +205,23 @@ def extract_operations_from_js(
     ops: dict[str, str] = {}
     op_features: dict[str, list[str]] = {}
 
+    for m in _RELAY_PARAMS_PATTERN.finditer(js_content):
+        query_id, op_name, _op_kind = m.groups()
+        endpoint = f"{query_id}/{op_name}"
+        if op_name in ops and ops[op_name] != endpoint:
+            logger.warning(
+                "Duplicate operation '%s' with different query IDs: "
+                "'%s' vs '%s' — keeping the last one",
+                op_name,
+                ops[op_name],
+                endpoint,
+            )
+        ops[op_name] = endpoint
+
+        alias = XWEB_OPERATION_ALIASES.get(op_name)
+        if alias:
+            ops[alias] = endpoint
+
     # Split by queryId boundaries to avoid greedy cross-operation matching
     blocks = re.split(r"(?=queryId:\s*\")", js_content)
 
@@ -148,7 +229,7 @@ def extract_operations_from_js(
         m = re.search(
             r'queryId:\s*"([A-Za-z0-9_-]+)"'
             r".*?"
-            r'operationName:\s*"([A-Za-z]+)"',
+            r'operationName:\s*"([A-Za-z0-9_]+)"',
             block[:500],
             re.DOTALL,
         )
@@ -189,6 +270,22 @@ def extract_operations_from_js(
         )
 
     return ops, op_features
+
+
+def _fetch_bundle(session: Any, url: str, headers: dict[str, str]) -> tuple[str, str | None]:
+    """Fetch a JS bundle and return its text, or None on failure."""
+    try:
+        response = session.get(url, headers=headers, timeout=10)
+    except Exception as e:
+        logger.warning("Failed to download bundle %s: %s — skipping", url, e)
+        return url, None
+
+    if response.status_code != 200:
+        log = logger.debug if response.status_code == 404 else logger.warning
+        log("Bundle %s returned HTTP %d — skipping", url, response.status_code)
+        return url, None
+
+    return url, response.text
 
 
 def _extract_json_object(text: str, start: int) -> str | None:
@@ -234,7 +331,7 @@ def extract_features_from_html(html: str) -> dict[str, bool]:
     """
     idx = html.find(_INITIAL_STATE_MARKER)
     if idx == -1:
-        logger.warning(
+        logger.debug(
             "No window.__INITIAL_STATE__ found in HTML — "
             "X.com may have changed how feature flags are embedded"
         )
@@ -271,7 +368,7 @@ def extract_features_from_html(html: str) -> dict[str, bool]:
             features[key] = v
 
     if not features:
-        logger.warning(
+        logger.debug(
             "Parsed __INITIAL_STATE__ but found 0 boolean feature flags — "
             "the nested structure featureSwitch.features may have changed"
         )
@@ -398,46 +495,72 @@ def _fetch_and_extract() -> tuple[dict[str, str], dict[str, bool], dict[str, lis
             "or the response was a login/captcha wall"
         )
 
-    # Step 3: Download bundles and extract operations + per-op features
+    # Step 3: Download bundles and extract operations + per-op features. The
+    # modern x-web app is Vite-based; many Relay artifacts are only referenced
+    # by other JS bundles, so walk the asset graph until it is exhausted.
     all_ops: dict[str, str] = {}
     all_op_features: dict[str, list[str]] = {}
-    for url in bundle_urls:
-        try:
-            js_response = session.get(url, headers=headers, timeout=15)
-        except Exception as e:
-            logger.warning("Failed to download bundle %s: %s — skipping", url, e)
+    seen_urls: set[str] = set()
+    pending_urls: list[str] = list(bundle_urls)
+    max_bundles = int(os.environ.get("CLIX_MAX_BUNDLES", "1000"))
+    workers = max(1, int(os.environ.get("CLIX_BUNDLE_WORKERS", "16")))
+
+    while pending_urls and len(seen_urls) < max_bundles:
+        batch: list[str] = []
+        while pending_urls and len(seen_urls) + len(batch) < max_bundles:
+            url = pending_urls.pop(0)
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            batch.append(url)
+
+        if not batch:
             continue
 
-        if js_response.status_code != 200:
-            logger.warning(
-                "Bundle %s returned HTTP %d — skipping",
-                url,
-                js_response.status_code,
-            )
-            continue
+        with ThreadPoolExecutor(max_workers=min(workers, len(batch))) as executor:
+            futures = [executor.submit(_fetch_bundle, session, url, headers) for url in batch]
+            for future in as_completed(futures):
+                url, js_content = future.result()
+                if js_content is None:
+                    continue
 
-        ops, op_feats = extract_operations_from_js(js_response.text)
-        all_ops.update(ops)
-        all_op_features.update(op_feats)
+                ops, op_feats = extract_operations_from_js(js_content)
+                all_ops.update(ops)
+                all_op_features.update(op_feats)
+
+                for discovered_url in extract_referenced_bundle_urls(js_content):
+                    if discovered_url not in seen_urls:
+                        pending_urls.append(discovered_url)
+
+    if pending_urls:
+        logger.warning(
+            "Stopped x-web bundle crawl at %d bundles with %d still pending; "
+            "raise CLIX_MAX_BUNDLES if required operations are missing",
+            len(seen_urls),
+            len(pending_urls),
+        )
 
     if not all_ops:
         raise RuntimeError(
-            f"Downloaded {len(bundle_urls)} JS bundles but extracted 0 operations — "
+            f"Downloaded {len(seen_urls)} JS bundles but extracted 0 operations — "
             f"the regex pattern may need updating (X.com changed bundle format)"
         )
 
     logger.info(
         "Extracted %d GraphQL operations from %d bundles",
         len(all_ops),
-        len(bundle_urls),
+        len(seen_urls),
     )
 
     # Step 4: Extract feature values from homepage HTML
     features = extract_features_from_html(html)
     if not features:
-        logger.warning(
+        logger.debug(
             "No feature flags extracted — requests may fail if X.com requires specific flags"
         )
+
+    for op_name, query_id in FALLBACK_OPERATIONS.items():
+        all_ops.setdefault(op_name, f"{query_id}/{op_name}")
 
     session.close()
     return all_ops, features, all_op_features
@@ -485,6 +608,8 @@ def get_graphql_endpoints() -> dict[str, str]:
     # These take priority because X.com may still emit stale IDs that return 404.
     for op_name, query_id in FALLBACK_OPERATIONS.items():
         fallback_endpoint = f"{query_id}/{op_name}"
+        if op_name in endpoints:
+            continue
         if endpoints.get(op_name) != fallback_endpoint:
             logger.debug("Using fallback query ID for %s: %s", op_name, query_id)
         endpoints[op_name] = fallback_endpoint
