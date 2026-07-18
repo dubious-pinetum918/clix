@@ -22,7 +22,7 @@ class FakeResponse:
     def __init__(self, payload: object) -> None:
         self.payload = payload
 
-    def __enter__(self) -> "FakeResponse":
+    def __enter__(self) -> FakeResponse:
         return self
 
     def __exit__(self, *_args: object) -> None:
@@ -41,15 +41,15 @@ def test_build_xquik_search_url_uses_source_truth_params() -> None:
     )
 
     assert url == (
-        "https://api.xquik.com/v1/x/search?"
+        "https://xquik.com/api/v1/x/tweets/search?"
         "q=open+source+ai&queryType=Latest&cursor=abc&limit=25"
     )
 
 
-def test_build_xquik_headers_uses_bearer_key() -> None:
+def test_build_xquik_headers_uses_api_key_header() -> None:
     assert build_xquik_headers("test-key") == {
         "Accept": "application/json",
-        "Authorization": "Bearer test-key",
+        "x-api-key": "test-key",
     }
 
 
@@ -58,7 +58,7 @@ def test_search_xquik_decodes_json_response() -> None:
 
     def fake_opener(request: Request, *, timeout: float) -> FakeResponse:
         captured["url"] = request.full_url
-        captured["authorization"] = request.headers["Authorization"]
+        captured["api_key"] = request.headers["X-api-key"]
         captured["timeout"] = timeout
         return FakeResponse({"data": [{"id": "1"}]})
 
@@ -70,8 +70,8 @@ def test_search_xquik_decodes_json_response() -> None:
 
     assert result == {"data": [{"id": "1"}]}
     assert captured == {
-        "url": "https://example.test/search?q=mcp&queryType=Top",
-        "authorization": "Bearer test-key",
+        "url": "https://example.test/search?q=mcp&queryType=Latest",
+        "api_key": "test-key",
         "timeout": 3,
     }
 

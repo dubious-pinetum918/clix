@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-XQUIK_SEARCH_URL = "https://api.xquik.com/v1/x/search"
+XQUIK_SEARCH_URL = "https://xquik.com/api/v1/x/tweets/search"
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class XquikSearchConfig:
 def build_xquik_search_url(
     query: str,
     *,
-    query_type: str = "Top",
+    query_type: str = "Latest",
     cursor: str | None = None,
     limit: int | None = None,
     base_url: str = XQUIK_SEARCH_URL,
@@ -42,7 +42,7 @@ def build_xquik_headers(api_key: str) -> dict[str, str]:
     """Build HTTP headers for Xquik API requests."""
     return {
         "Accept": "application/json",
-        "Authorization": f"Bearer {api_key}",
+        "x-api-key": api_key,
     }
 
 
@@ -50,7 +50,7 @@ def search_xquik(
     query: str,
     config: XquikSearchConfig,
     *,
-    query_type: str = "Top",
+    query_type: str = "Latest",
     cursor: str | None = None,
     limit: int | None = None,
     opener: Callable[..., Any] = urlopen,
