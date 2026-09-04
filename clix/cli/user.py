@@ -88,7 +88,13 @@ def user_tweets(
             print_error(f"User @{handle} not found")
             raise typer.Exit(1)
 
-        response = get_user_tweets(client, user.id, count, include_replies=replies)
+        response = get_user_tweets(
+            client,
+            user.id,
+            count,
+            include_replies=replies,
+            screen_name=handle,
+        )
 
     compact = is_compact_mode(ctx)
     if compact and json_output:
