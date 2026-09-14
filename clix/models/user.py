@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel
@@ -42,6 +42,8 @@ class User(BaseModel):
         try:
             core_user = result.get("core", {})
             legacy = result.get("legacy", {})
+            verification = result.get("verification", {})
+            counts = result.get("counts", {})
             rest_id = result.get("rest_id", "")
 
             if not rest_id:
@@ -52,6 +54,14 @@ class User(BaseModel):
             if raw_date:
                 try:
                     created_at = datetime.strptime(raw_date, "%a %b %d %H:%M:%S %z %Y")
+                except (ValueError, TypeError):
+                    pass
+            elif core_user.get("created_at_ms"):
+                try:
+                    created_at = datetime.fromtimestamp(
+                        int(core_user["created_at_ms"]) / 1000,
+                        tz=timezone.utc,
+                    )
                 except (ValueError, TypeError):
                     pass
 
@@ -70,6 +80,9 @@ class User(BaseModel):
             avatar_url = result.get("avatar", {}).get(
                 "image_url", legacy.get("profile_image_url_https", "")
             )
+            banner_url = result.get("banner", {}).get(
+                "image_url", legacy.get("profile_banner_url", "")
+            )
 
             # Bio: prefer legacy (has full text), fallback to profile_bio
             bio = legacy.get("description", "")
@@ -83,14 +96,17 @@ class User(BaseModel):
                 bio=bio,
                 location=location,
                 website=website,
-                verified=result.get("is_blue_verified", False),
-                followers_count=legacy.get("followers_count", 0),
-                following_count=legacy.get("friends_count", 0),
-                tweet_count=legacy.get("statuses_count", 0),
-                listed_count=legacy.get("listed_count", 0),
+                verified=result.get(
+                    "is_blue_verified",
+                    verification.get("is_blue_verified", False),
+                ),
+                followers_count=legacy.get("followers_count", counts.get("followers_count", 0)),
+                following_count=legacy.get("friends_count", counts.get("following_count", 0)),
+                tweet_count=legacy.get("statuses_count", counts.get("tweet_count", 0)),
+                listed_count=legacy.get("listed_count", counts.get("listed_count", 0)),
                 created_at=created_at,
                 profile_image_url=avatar_url.replace("_normal", "_400x400"),
-                profile_banner_url=legacy.get("profile_banner_url", ""),
+                profile_banner_url=banner_url,
                 pinned_tweet_id=pinned[0] if pinned else None,
             )
         except (KeyError, TypeError, IndexError):
