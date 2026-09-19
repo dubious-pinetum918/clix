@@ -31,30 +31,35 @@ def _extract_tweets_from_timeline(data: dict[str, Any]) -> TimelineResponse:
     instructions = _find_instructions(data)
 
     for instruction in instructions:
-        inst_type = instruction.get("type", "")
+        inst_type = instruction.get("type") or instruction.get("__typename", "")
 
         entries = []
-        if inst_type == "TimelineAddEntries":
+        if inst_type in ("TimelineAddEntries", "TimelineTimeline"):
             entries = instruction.get("entries", [])
         elif inst_type == "TimelineAddToModule":
             entries = instruction.get("moduleItems", [])
+        elif "entries" in instruction:
+            entries = instruction.get("entries", [])
+        elif "moduleItems" in instruction:
+            entries = instruction.get("moduleItems", [])
 
         for entry in entries:
-            entry_id = entry.get("entryId", "")
+            entry_id = entry.get("entryId") or entry.get("entry_id", "")
             content = entry.get("content", {})
+            item_content = _timeline_item_content(content)
 
             if entry_id.startswith("cursor-top"):
                 cursor_top = content.get("value") or _extract_cursor(content)
             elif entry_id.startswith("cursor-bottom"):
                 cursor_bottom = content.get("value") or _extract_cursor(content)
-            elif "itemContent" in content:
-                tweet = _parse_tweet_entry(content["itemContent"])
+            elif item_content:
+                tweet = _parse_tweet_entry(item_content)
                 if tweet:
                     tweets.append(tweet)
-            elif content.get("entryType") == "TimelineTimelineModule":
+            elif _field(content, "entryType", "__typename") == "TimelineTimelineModule":
                 for item in content.get("items", []):
-                    item_content = item.get("item", {}).get("itemContent", {})
-                    tweet = _parse_tweet_entry(item_content)
+                    nested_content = item.get("item", {})
+                    tweet = _parse_tweet_entry(_timeline_item_content(nested_content))
                     if tweet:
                         tweets.append(tweet)
 
@@ -71,9 +76,18 @@ def _find_instructions(data: dict[str, Any]) -> list[dict]:
     # Try common paths
     for path in [
         ["data", "home", "home_timeline_urt", "instructions"],
+        ["data", "home_timeline", "home_timeline_urt", "instructions"],
         ["data", "search_by_raw_query", "search_timeline", "timeline", "instructions"],
         ["data", "user", "result", "timeline_v2", "timeline", "instructions"],
         ["data", "user", "result", "timeline", "timeline", "instructions"],
+        [
+            "data",
+            "user_result_by_screen_name",
+            "result",
+            "profile_timeline_v2",
+            "timeline",
+            "instructions",
+        ],
         ["data", "bookmark_timeline_v2", "timeline", "instructions"],
         ["data", "bookmark_timeline", "timeline", "instructions"],
         ["data", "bookmark_collection_timeline", "timeline", "instructions"],
@@ -101,17 +115,41 @@ def _find_instructions(data: dict[str, Any]) -> list[dict]:
 
 def _extract_cursor(content: dict[str, Any]) -> str | None:
     """Extract cursor value from content."""
-    cursor_type = content.get("cursorType")
+    cursor_type = content.get("cursorType") or content.get("cursor_type")
     if cursor_type:
         return content.get("value")
     # Try nested
-    item = content.get("itemContent", {})
+    item = content.get("itemContent") or content.get("item_content") or content.get("content", {})
     return item.get("value")
+
+
+def _field(data: dict[str, Any], *names: str) -> Any:
+    """Return the first present field from a GraphQL result dict."""
+    for name in names:
+        if name in data:
+            return data[name]
+    return None
+
+
+def _timeline_item_content(content: dict[str, Any]) -> dict[str, Any]:
+    """Normalize legacy and Relay timeline item wrappers."""
+    if not isinstance(content, dict):
+        return {}
+    if "itemContent" in content:
+        return content.get("itemContent") or {}
+    if "item_content" in content:
+        return content.get("item_content") or {}
+    nested = content.get("content")
+    if isinstance(nested, dict):
+        return nested
+    if _field(content, "itemType", "__typename") == "TimelineTweet":
+        return content
+    return {}
 
 
 def _parse_tweet_entry(item_content: dict[str, Any]) -> Tweet | None:
     """Parse a tweet from a timeline entry's itemContent."""
-    if item_content.get("itemType") != "TimelineTweet":
+    if _field(item_content, "itemType", "__typename") != "TimelineTweet":
         return None
 
     tweet_results = item_content.get("tweet_results", {})
@@ -162,6 +200,9 @@ def get_tweet_detail(client: XClient, tweet_id: str) -> list[Tweet]:
     """Fetch a tweet and its conversation thread."""
     variables = {
         "focalTweetId": tweet_id,
+        "cursor": None,
+        "rankingMode": None,
+        "referrer": None,
         "with_rux_injections": False,
         "includePromotedContent": False,
         "withCommunity": True,
@@ -169,6 +210,7 @@ def get_tweet_detail(client: XClient, tweet_id: str) -> list[Tweet]:
         "withBirdwatchNotes": True,
         "withVoice": True,
         "withV2Timeline": True,
+        "__relay_internal__pv__appviewerisloggedinprovider": True,
     }
 
     data = client.graphql_get("TweetDetail", variables)
@@ -184,15 +226,15 @@ def get_tweet_detail(client: XClient, tweet_id: str) -> list[Tweet]:
     for instruction in instructions:
         for entry in instruction.get("entries", []):
             content = entry.get("content", {})
+            item_content = _timeline_item_content(content)
 
-            if "itemContent" in content:
-                tweet = _parse_tweet_entry(content["itemContent"])
+            if item_content:
+                tweet = _parse_tweet_entry(item_content)
                 if tweet:
                     tweets.append(tweet)
-            elif content.get("entryType") == "TimelineTimelineModule":
+            elif _field(content, "entryType", "__typename") == "TimelineTimelineModule":
                 for item in content.get("items", []):
-                    item_content = item.get("item", {}).get("itemContent", {})
-                    tweet = _parse_tweet_entry(item_content)
+                    tweet = _parse_tweet_entry(_timeline_item_content(item.get("item", {})))
                     if tweet:
                         tweets.append(tweet)
 
@@ -212,6 +254,7 @@ def search_tweets(
         "count": count,
         "querySource": "typed_query",
         "product": search_type,
+        "__relay_internal__pv__appviewerisloggedinprovider": True,
     }
     if cursor:
         variables["cursor"] = cursor
@@ -224,11 +267,16 @@ def get_user_by_handle(client: XClient, handle: str) -> User | None:
     """Fetch user profile by screen name."""
     variables = {
         "screen_name": handle,
+        "screenName": handle,
         "withSafetyModeUserFields": True,
+        "__relay_internal__pv__appviewerisloggedinprovider": True,
     }
 
     data = client.graphql_get("UserByScreenName", variables)
-    result = data.get("data", {}).get("user", {}).get("result", {})
+    result = (
+        data.get("data", {}).get("user", {}).get("result", {})
+        or data.get("data", {}).get("user_result_by_screen_name", {}).get("result", {})
+    )
 
     if not result or result.get("__typename") == "UserUnavailable":
         return None
@@ -242,17 +290,20 @@ def get_user_tweets(
     count: int = 20,
     cursor: str | None = None,
     include_replies: bool = False,
+    screen_name: str | None = None,
 ) -> TimelineResponse:
     """Fetch tweets from a user."""
     operation = "UserTweetsAndReplies" if include_replies else "UserTweets"
 
     variables: dict[str, Any] = {
         "userId": user_id,
+        "screenName": screen_name or user_id,
         "count": count,
         "includePromotedContent": False,
         "withQuickPromoteEligibilityTweetFields": False,
         "withVoice": True,
         "withV2Timeline": True,
+        "__relay_internal__pv__appviewerisloggedinprovider": True,
     }
     if cursor:
         variables["cursor"] = cursor
@@ -351,6 +402,7 @@ def get_bookmarks(
         "count": count,
         "includePromotedContent": False,
         "rawQuery": "a OR e OR i OR o OR u OR t OR s OR n OR r OR l",
+        "__relay_internal__pv__appviewerisloggedinprovider": True,
     }
     if cursor:
         variables["cursor"] = cursor
