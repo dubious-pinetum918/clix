@@ -49,6 +49,45 @@ logger = logging.getLogger(__name__)
 # Transaction cache settings
 _TRANSACTION_CACHE_FILE = "transaction_cache.json"
 _TRANSACTION_CACHE_TTL = 3600  # 1 hour
+_RELAY_IS_LOGGED_IN_PROVIDER = "__relay_internal__pv__appviewerisloggedinprovider"
+
+
+def _adapt_graphql_variables(
+    operation: str,
+    endpoint_operation: str,
+    variables: dict[str, Any],
+) -> dict[str, Any]:
+    """Add x-web Relay variables while preserving legacy API variables."""
+    adapted = dict(variables)
+
+    if endpoint_operation in {
+        "SearchByRawQuery",
+        "TweetDetail",
+        "UserByScreenName",
+        "UserTweets",
+        "TweetResultByRestId",
+        "bookmarksQuery",
+        "homeQuery",
+        "homeFollowingQuery",
+    }:
+        adapted.setdefault(_RELAY_IS_LOGGED_IN_PROVIDER, True)
+
+    if endpoint_operation == "UserByScreenName" and "screenName" not in adapted:
+        screen_name = adapted.get("screen_name")
+        if screen_name is not None:
+            adapted["screenName"] = screen_name
+
+    if endpoint_operation == "TweetDetail":
+        adapted.setdefault("cursor", None)
+        adapted.setdefault("rankingMode", None)
+        adapted.setdefault("referrer", None)
+
+    if endpoint_operation == "TweetResultByRestId" and "restId" not in adapted:
+        tweet_id = adapted.get("tweetId")
+        if tweet_id is not None:
+            adapted["restId"] = tweet_id
+
+    return adapted
 
 
 def _transaction_cache_path() -> Path:
@@ -436,11 +475,17 @@ class XClient:
                     f"Available: {', '.join(sorted(endpoints.keys()))}"
                 )
             url = f"{GRAPHQL_BASE}/{endpoint}"
+            endpoint_operation = endpoint.split("/", 1)[1]
+            request_variables = _adapt_graphql_variables(
+                operation,
+                endpoint_operation,
+                variables,
+            )
 
             if current_method == "GET":
                 kwargs: dict[str, Any] = {
                     "params": {
-                        "variables": json.dumps(variables),
+                        "variables": json.dumps(request_variables),
                         "features": json.dumps(resolved_features),
                         "fieldToggles": json.dumps(resolved_toggles),
                     }
@@ -448,7 +493,7 @@ class XClient:
             else:
                 kwargs = {
                     "json_data": {
-                        "variables": variables,
+                        "variables": request_variables,
                         "features": resolved_features,
                         "queryId": endpoint.split("/")[0],
                     }
