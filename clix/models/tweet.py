@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, computed_field
@@ -79,6 +79,8 @@ class Tweet(BaseModel):
             core_user = user_results.get("core", {})
             legacy_user = user_results.get("legacy", {})
             legacy = tweet_data.get("legacy", {})
+            details = tweet_data.get("details", {})
+            counts = tweet_data.get("counts", {})
             rest_id = tweet_data.get("rest_id", legacy.get("id_str", ""))
 
             if not rest_id:
@@ -100,17 +102,20 @@ class Tweet(BaseModel):
 
             # Parse engagement
             engagement = TweetEngagement(
-                likes=legacy.get("favorite_count", 0),
-                retweets=legacy.get("retweet_count", 0),
-                replies=legacy.get("reply_count", 0),
-                quotes=legacy.get("quote_count", 0),
-                bookmarks=legacy.get("bookmark_count", 0),
+                likes=legacy.get("favorite_count", counts.get("favorite_count", 0)),
+                retweets=legacy.get("retweet_count", counts.get("retweet_count", 0)),
+                replies=legacy.get("reply_count", counts.get("reply_count", 0)),
+                quotes=legacy.get("quote_count", counts.get("quote_count", 0)),
+                bookmarks=legacy.get("bookmark_count", counts.get("bookmark_count", 0)),
                 views=int(tweet_data.get("views", {}).get("count", 0) or 0),
             )
 
             # Parse media
             media_list: list[TweetMedia] = []
-            for m in legacy.get("extended_entities", {}).get("media", []):
+            media_items = legacy.get("extended_entities", {}).get("media", [])
+            if not media_items:
+                media_items = tweet_data.get("media_entities2", [])
+            for m in media_items:
                 media_type = m.get("type", "photo")
                 if media_type == "video" or media_type == "animated_gif":
                     variants = m.get("video_info", {}).get("variants", [])
@@ -136,9 +141,25 @@ class Tweet(BaseModel):
                     created_at = datetime.strptime(raw_date, "%a %b %d %H:%M:%S %z %Y")
                 except (ValueError, TypeError):
                     pass
+            elif details.get("created_at_ms"):
+                try:
+                    created_at = datetime.fromtimestamp(
+                        int(details["created_at_ms"]) / 1000,
+                        tz=timezone.utc,
+                    )
+                except (ValueError, TypeError):
+                    pass
 
             # Get full text
-            text = legacy.get("full_text", legacy.get("text", ""))
+            text = legacy.get("full_text", legacy.get("text", details.get("full_text", "")))
+            note_text = (
+                tweet_data.get("note_tweet", {})
+                .get("note_tweet_results", {})
+                .get("result", {})
+                .get("text")
+            )
+            if note_text:
+                text = note_text
 
             # Parse quoted tweet
             quoted = None
@@ -152,15 +173,21 @@ class Tweet(BaseModel):
                 author_id=user_results.get("rest_id", ""),
                 author_name=core_user.get("name", legacy_user.get("name", "")),
                 author_handle=core_user.get("screen_name", legacy_user.get("screen_name", "")),
-                author_verified=user_results.get("is_blue_verified", False),
+                author_verified=user_results.get(
+                    "is_blue_verified",
+                    user_results.get("verification", {}).get("is_blue_verified", False),
+                ),
                 created_at=created_at,
                 engagement=engagement,
                 media=media_list,
                 quoted_tweet=quoted,
-                reply_to_id=legacy.get("in_reply_to_status_id_str"),
+                reply_to_id=legacy.get(
+                    "in_reply_to_status_id_str",
+                    tweet_data.get("reply_to_results", {}).get("rest_id"),
+                ),
                 reply_to_handle=legacy.get("in_reply_to_screen_name"),
                 conversation_id=legacy.get("conversation_id_str"),
-                language=legacy.get("lang"),
+                language=legacy.get("lang", tweet_data.get("language")),
                 source=tweet_data.get("source"),
                 is_subscriber_only=is_subscriber_only,
             )
